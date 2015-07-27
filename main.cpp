@@ -1,7 +1,11 @@
 #include <iostream>
 #include <twitch.h>
+#include "heph.h"
+#include "mansion_bot.h"
 
 Heph* Heph::instance = nullptr;
+MansionBot* MansionBot::instance = nullptr;
+
 std::string TwitchBot::async = "asyncronous";
 std::string TwitchBot::heph = "heph";
 

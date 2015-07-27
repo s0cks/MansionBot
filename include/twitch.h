@@ -12,60 +12,11 @@
 
 #define MAXDATA_SIZE 256
 
-class Timer{
-private:
-    time_t begin;
-public:
-    Timer(){}
-    ~Timer(){}
-
-    void
-    start(){
-        this->begin = time(0);
-    }
-
-    double
-    elapsed(){
-        return difftime(time(0), this->begin);
-    }
-};
-
-class Heph{
-private:
-    std::string json;
-
-    Heph(){}
-    ~Heph(){}
-    Heph(const Heph& copy) = delete;
-    void operator=(const Heph&) = delete;
-
-    static Heph* instance;
-public:
-    static Heph*
-    getInstance(){
-        if(instance == nullptr){
-            instance = new Heph();
-        }
-
-        return instance;
-    }
-
-    bool
-    online(){
-        this->json = HttpRequest().get("https://api.twitch.tv/kraken/streams/heph");
-        rapidjson::Document doc;
-        doc.Parse(this->json.c_str());
-        rapidjson::Value& stream = doc["stream"];
-        return !stream.IsNull();
-    }
-};
-
 class TwitchBot{
 private:
     int sd;
     std::string nick;
     std::string token;
-    std::map<std::string, Timer> timerMap;
 
     static std::string heph;
     static std::string async;
@@ -100,32 +51,6 @@ private:
         }
 
         return false;
-    }
-
-    void
-    sendHephOnline(){
-        if(timerMap.find("online") == timerMap.end()){
-            timerMap["online"] = Timer();
-            Heph* heph = Heph::getInstance();
-
-            if(heph->online()){
-                this->sendMessage("Heph is online");
-            } else{
-                this->sendMessage("Heph is not online");
-            }
-            timerMap["online"].start();
-        }
-
-        if(timerMap["online"].elapsed() >= 30){
-            Heph* heph = Heph::getInstance();
-
-            if(heph->online()){
-                this->sendMessage("Heph is online");
-            } else{
-                this->sendMessage("Heph is not online");
-            }
-            timerMap["online"].start();
-        }
     }
 
     void
@@ -237,9 +162,7 @@ public:
             if(charSearch(buff, "PING")){
                 sendPong(buff);
             } else if((readStr.substr(1, heph.size()) == heph || readStr.substr(1, async.size()) == async)){
-                if(charSearch(buff, "!test")){
-                    sendHephOnline();
-                }
+
             }
 
             if(readBytes == 0){
