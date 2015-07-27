@@ -7,10 +7,21 @@
 #include <unistd.h>
 #include "http_client.h"
 #include "rapidjson/document.h"
+#include "mansion_bot.h"
 #include <map>
 #include <time.h>
+#include <vector>
+#include <algorithm>
 
 #define MAXDATA_SIZE 256
+
+class TwitchBot;
+
+typedef void (*CommandFunc)(TwitchBot*, std::string, std::vector<std::string> params);
+
+namespace commands{
+    static std::map<std::string, CommandFunc>* commands = new std::map<std::string, CommandFunc>();
+}
 
 class TwitchBot{
 private:
@@ -94,6 +105,23 @@ private:
             }
         }
     }
+
+    std::vector<std::string>&
+    split(const std::string& s, char delim, std::vector<std::string>& elems){
+        std::string item;
+        std::stringstream ss(s);
+        while(std::getline(ss, item, delim)){
+            elems.push_back(item);
+        }
+        return elems;
+    }
+
+    std::vector<std::string>
+    split(const std::string& s, char delim){
+        std::vector<std::string> elems;
+        split(s, delim, elems);
+        return elems;
+    }
 public:
     TwitchBot(const std::string& nick, const std::string token){
         this->nick = nick;
@@ -162,20 +190,36 @@ public:
             if(charSearch(buff, "PING")){
                 sendPong(buff);
             } else if((readStr.substr(1, heph.size()) == heph || readStr.substr(1, async.size()) == async)){
-
+                std::string msg = readStr.substr(readStr.find_last_of(":") + 1);
+                if(msg.find(' ') != std::string::npos){
+                    std::vector<std::string> tokens = split(msg, ' ');
+                    std::string cmd = tokens.front().substr(1, tokens.front().size() - 1);
+                    std::map<std::string, CommandFunc>::iterator iter = commands::commands->find(cmd);
+                    if(iter != commands::commands->end()){
+                        std::vector<std::string> params;
+                        std::transform(tokens.begin() + 1, tokens.end(), std::back_inserter(params), [](const std::string& s){ return s; });
+                        (*iter->second)(this, readStr.substr(1, readStr.find_first_of('!')), params);
+                    }
+                } else{
+                    std::map<std::string, CommandFunc>::iterator iter = commands::commands->find(msg);
+                    if(iter != commands::commands->end()){
+                        std::vector<std::string> params;
+                        (*iter->second)(this, readStr.substr(1, readStr.find_first_of('!')), params);
+                    }
+                }
             }
 
-            if(readBytes == 0){
-                std::cout << "------------- Connection Closed --------------" << std::endl;
-                break;
-            }
+        if(readBytes == 0){
+            std::cout << "------------- Connection Closed --------------" << std::endl;
+            break;
         }
     }
+}
 
-    void
-    sendMessage(const char* msg){
-        std::stringstream stream;
-        stream << "PRIVMSG #heph :" << msg << "\r\n";
+void
+sendMessage(const char* msg){
+    std::stringstream stream;
+    stream << "PRIVMSG #heph :" << msg << "\r\n";
         this->sendData(stream.str().c_str());
     }
 };

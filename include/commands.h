@@ -6,52 +6,47 @@
 #include "mansion_bot.h"
 #include "twitch.h"
 
-class Command{
-protected:
-    std::string name;
-public:
-    Command(std::string name){
-        this->name = name;
-    }
-    virtual ~Command(){}
-
-    virtual void
-    invoke(std::string sender){}
-};
-
-class HephOnline : public Command{
-private:
-    void
-    sendOnlineStatus(TwitchBot bot){
-        Heph* heph = Heph::getInstance();
-        if(heph->online()){
-            bot.sendMessage("Heph is online");
-        } else{
-            bot.sendMessage("Heph isn't online");
+static void
+test(TwitchBot* bot, std::string sender, std::vector<std::string> params){
+    std::cout << "Hello World" << std::endl;
+    MansionBot* mansion = MansionBot::getInstance();
+    if(mansion->hasTimer("test")){
+        Timer* t = mansion->getTimer("test");
+        if(t->elapsed() >= 30){
+            bot->sendMessage("Hello World");
+            t->start();
         }
+    } else{
+        Timer t = Timer();
+        mansion->addTimer("test", t);
+        t.start();
+        bot->sendMessage("Hello World");
     }
-public:
-    HephOnline() : Command("online"){}
-    ~HephOnline(){}
+}
 
-    void
-    invoke(TwitchBot twitchBot, std::string sender){
-        if(sender.compare("asyncronous") || sender.compare("heph")){
-            MansionBot* bot = MansionBot::getInstance();
-            if(bot->hasTimer("online")){
-                Timer* timer = bot->getTimer("online");
-                if(timer->elapsed() >= 30){
-                    this->sendOnlineStatus(twitchBot);
-                    timer->start();
-                }
-            } else{
-                Timer t = Timer();
-                bot->addTimer("online", t);
-                this->sendOnlineStatus(twitchBot);
-                t.start();
-            }
+static void
+hello(TwitchBot* bot, std::string sender, std::vector<std::string> params){
+    MansionBot* mansion = MansionBot::getInstance();
+    if(mansion->hasTimer("hello")){
+        Timer* t = mansion->getTimer("hello");
+        if(t->elapsed() >= 30){
+            bot->sendMessage(("Hello " + sender).c_str());
+            t->start();
         }
+    } else{
+        Timer t = Timer();
+        mansion->addTimer("hello", t);
+        t.start();
+        bot->sendMessage(("Hello " + sender).c_str());
     }
-};
+}
+
+namespace commands{
+    static void
+    init(){
+        commands::commands->insert(std::make_pair("test", &test));
+        commands::commands->insert(std::make_pair("hello", &hello));
+    }
+}
 
 #endif
